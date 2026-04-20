@@ -16,7 +16,7 @@ autos_actuales = 0
 # BASE DE DATOS
 # ==================================
 def init_db():
-    conn = sqlite3.connect("datos.db")
+conn = sqlite3.connect("datos.db", check_same_thread=False)
     cursor = conn.cursor()
 
     cursor.execute("""
