@@ -180,7 +180,6 @@ def inicio():
     <meta charset="UTF-8">
 
     <style>
-
     body {{
         font-family: Arial;
         background:#f4f6f8;
@@ -199,25 +198,10 @@ def inicio():
         margin-bottom:20px;
     }}
 
-    .abierto {{
-        color:green;
-        font-weight:bold;
-    }}
-
-    .cerrado {{
-        color:red;
-        font-weight:bold;
-    }}
-
-    .disponible {{
-        color:green;
-        font-weight:bold;
-    }}
-
-    .lleno {{
-        color:red;
-        font-weight:bold;
-    }}
+    .abierto {{ color:green; font-weight:bold; }}
+    .cerrado {{ color:red; font-weight:bold; }}
+    .disponible {{ color:green; font-weight:bold; }}
+    .lleno {{ color:red; font-weight:bold; }}
 
     button {{
         padding:10px 18px;
@@ -270,14 +254,12 @@ def inicio():
         border-radius:8px;
         border:1px solid #ccc;
     }}
-
     </style>
     </head>
 
     <body>
 
     <div class="panel">
-
     <h1>🅿️ Estacionamiento Falcon</h1>
 
     <h2>Estado:
@@ -298,7 +280,6 @@ def inicio():
     <a href="/cerrar"><button class="btn2">CERRAR</button></a>
     <a href="/reiniciar"><button class="btn3">REINICIAR</button></a>
     <a href="/"><button class="btn3">ACTUALIZAR</button></a>
-
     </div>
 
     <div class="panel">
@@ -306,7 +287,6 @@ def inicio():
     <h2>🔍 Buscador</h2>
 
     <form method="GET">
-
     <select name="filtro">
         <option value="evento">Evento</option>
         <option value="fecha_hora">Fecha completa</option>
@@ -318,15 +298,12 @@ def inicio():
     </select>
 
     <input type="text" name="valor" placeholder="Buscar">
-
     <button class="btn3" type="submit">Buscar</button>
-
     </form>
 
     </div>
 
     <div class="panel">
-
     <h2>📋 Historial</h2>
 
     <table>
@@ -340,13 +317,8 @@ def inicio():
     </tr>
     """
 
-    # FILAS
     for fila in datos:
-
-        if fila[5] == "Entrada":
-            evento = "<span class='entrada'>🟢 Entrada</span>"
-        else:
-            evento = "<span class='salida'>🔴 Salida</span>"
+        evento = "<span class='entrada'>🟢 Entrada</span>" if fila[5] == "Entrada" else "<span class='salida'>🔴 Salida</span>"
 
         html += f"""
         <tr>
@@ -361,7 +333,6 @@ def inicio():
 
     html += """
     </table>
-
     </div>
 
     </body>
@@ -370,8 +341,7 @@ def inicio():
 
     return html
 
+
 # ==================================
-# INICIAR SERVIDOR
+# IMPORTANTE: NO app.run() (Render usa Gunicorn)
 # ==================================
-if __name__ == "__main__":
-    app.run(debug=True, debug=False)
