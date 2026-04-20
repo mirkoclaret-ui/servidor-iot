@@ -1,4 +1,3 @@
-
 from flask import Flask, request, redirect
 import sqlite3
 from datetime import datetime
@@ -178,7 +177,7 @@ def inicio():
     <html>
     <head>
     <title>Estacionamiento Falcon</title>
-    <meta http-equiv="refresh" content="2">
+    <meta charset="UTF-8">
 
     <style>
 
@@ -298,6 +297,7 @@ def inicio():
     <a href="/abrir"><button class="btn1">ABRIR</button></a>
     <a href="/cerrar"><button class="btn2">CERRAR</button></a>
     <a href="/reiniciar"><button class="btn3">REINICIAR</button></a>
+    <a href="/"><button class="btn3">ACTUALIZAR</button></a>
 
     </div>
 
@@ -374,4 +374,4 @@ def inicio():
 # INICIAR SERVIDOR
 # ==================================
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, debug=False)
