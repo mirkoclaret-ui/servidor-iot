@@ -21,11 +21,11 @@ def get_db():
         user=os.getenv("MYSQLUSER"),
         password=os.getenv("MYSQLPASSWORD"),
         database=os.getenv("MYSQLDATABASE"),
-        port=int(os.getenv("MYSQLPORT"))
+        port=int(os.getenv("MYSQLPORT", 3306))
     )
 
 # ==================================
-# CREAR TABLA (POR SI NO EXISTE)
+# CREAR TABLA
 # ==================================
 def init_db():
     conn = get_db()
@@ -48,7 +48,7 @@ def init_db():
 init_db()
 
 # ==================================
-# GUARDAR EVENTOS
+# GUARDAR EVENTO
 # ==================================
 def guardar_evento(d1, d2, evento):
     global autos_actuales
@@ -68,7 +68,15 @@ def guardar_evento(d1, d2, evento):
     conn.close()
 
 # ==================================
-# API DEL ESP32
+# PRUEBA MYSQL
+# ==================================
+@app.route('/test')
+def test():
+    guardar_evento(50, 0, "Entrada")
+    return "ok"
+
+# ==================================
+# API SENSOR
 # ==================================
 @app.route('/sensor', methods=['POST'])
 def sensor():
@@ -82,22 +90,18 @@ def sensor():
     distancia = data["distancia"]
 
     if tipo == "entrada":
-
         if autos_actuales >= MAX_AUTOS:
             return {"accion": "lleno"}
 
         autos_actuales += 1
         guardar_evento(distancia, 0, "Entrada")
-
         return {"accion": "abrir"}
 
     elif tipo == "salida":
-
         if autos_actuales > 0:
             autos_actuales -= 1
 
         guardar_evento(0, distancia, "Salida")
-
         return {"accion": "abrir"}
 
     return {"accion": "error"}
