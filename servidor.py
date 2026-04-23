@@ -1,5 +1,6 @@
 from flask import Flask, request, redirect
-import sqlite3
+import mysql.connector
+import os
 from datetime import datetime
 
 app = Flask(__name__)
@@ -12,20 +13,32 @@ estado_estacionamiento = False
 autos_actuales = 0
 
 # ==================================
-# BASE DE DATOS
+# CONEXIÓN MYSQL
+# ==================================
+def get_db():
+    return mysql.connector.connect(
+        host=os.getenv("MYSQLHOST"),
+        user=os.getenv("MYSQLUSER"),
+        password=os.getenv("MYSQLPASSWORD"),
+        database=os.getenv("MYSQLDATABASE"),
+        port=int(os.getenv("MYSQLPORT"))
+    )
+
+# ==================================
+# CREAR TABLA (POR SI NO EXISTE)
 # ==================================
 def init_db():
-    conn = sqlite3.connect("datos.db", check_same_thread=False)
+    conn = get_db()
     cursor = conn.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS historial (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            distancia_entrada REAL,
-            distancia_salida REAL,
-            total_autos INTEGER,
-            fecha_hora TEXT,
-            evento TEXT
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            distancia_entrada FLOAT,
+            distancia_salida FLOAT,
+            total_autos INT,
+            fecha_hora VARCHAR(50),
+            evento VARCHAR(20)
         )
     """)
 
@@ -42,13 +55,13 @@ def guardar_evento(d1, d2, evento):
 
     fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    conn = sqlite3.connect("datos.db")
+    conn = get_db()
     cursor = conn.cursor()
 
     cursor.execute("""
         INSERT INTO historial
         (distancia_entrada, distancia_salida, total_autos, fecha_hora, evento)
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s)
     """, (d1, d2, autos_actuales, fecha, evento))
 
     conn.commit()
@@ -68,7 +81,6 @@ def sensor():
     tipo = data["tipo"]
     distancia = data["distancia"]
 
-    # ENTRADA
     if tipo == "entrada":
 
         if autos_actuales >= MAX_AUTOS:
@@ -79,7 +91,6 @@ def sensor():
 
         return {"accion": "abrir"}
 
-    # SALIDA
     elif tipo == "salida":
 
         if autos_actuales > 0:
@@ -92,7 +103,7 @@ def sensor():
     return {"accion": "error"}
 
 # ==================================
-# BOTONES
+# BOTONES WEB
 # ==================================
 @app.route('/abrir')
 def abrir():
@@ -119,207 +130,48 @@ def reiniciar():
 def inicio():
     global autos_actuales, estado_estacionamiento
 
-    filtro = request.args.get("filtro")
-    valor = request.args.get("valor")
-
-    conn = sqlite3.connect("datos.db")
+    conn = get_db()
     cursor = conn.cursor()
 
-    # BÚSQUEDAS
-    if filtro and valor:
-
-        if filtro == "anio":
-            cursor.execute("""
-                SELECT * FROM historial
-                WHERE strftime('%Y', fecha_hora)=?
-                ORDER BY id DESC
-            """, (valor,))
-
-        elif filtro == "mes":
-            cursor.execute("""
-                SELECT * FROM historial
-                WHERE strftime('%m', fecha_hora)=?
-                ORDER BY id DESC
-            """, (valor.zfill(2),))
-
-        elif filtro == "dia":
-            cursor.execute("""
-                SELECT * FROM historial
-                WHERE strftime('%d', fecha_hora)=?
-                ORDER BY id DESC
-            """, (valor.zfill(2),))
-
-        elif filtro == "hora":
-            cursor.execute("""
-                SELECT * FROM historial
-                WHERE strftime('%H', fecha_hora)=?
-                ORDER BY id DESC
-            """, (valor.zfill(2),))
-
-        else:
-            query = f"SELECT * FROM historial WHERE {filtro} LIKE ? ORDER BY id DESC"
-            cursor.execute(query, ('%' + valor + '%',))
-
-    else:
-        cursor.execute("SELECT * FROM historial ORDER BY id DESC")
-
+    cursor.execute("SELECT * FROM historial ORDER BY id DESC")
     datos = cursor.fetchall()
     conn.close()
 
-    # TEXTOS
     estado = "🟢 ABIERTO" if estado_estacionamiento else "🔴 CERRADO"
     lleno = "🚨 LLENO" if autos_actuales >= MAX_AUTOS else "Disponible"
 
-    # ==================================
-    # HTML
-    # ==================================
     html = f"""
     <html>
     <head>
     <title>Estacionamiento Falcon</title>
-    <meta charset="UTF-8">
-
-    <style>
-    body {{
-        font-family: Arial;
-        background:#f4f6f8;
-        padding:25px;
-    }}
-
-    h1 {{
-        color:#222;
-    }}
-
-    .panel {{
-        background:white;
-        padding:20px;
-        border-radius:15px;
-        box-shadow:0 0 10px rgba(0,0,0,0.1);
-        margin-bottom:20px;
-    }}
-
-    .abierto {{ color:green; font-weight:bold; }}
-    .cerrado {{ color:red; font-weight:bold; }}
-    .disponible {{ color:green; font-weight:bold; }}
-    .lleno {{ color:red; font-weight:bold; }}
-
-    button {{
-        padding:10px 18px;
-        border:none;
-        border-radius:10px;
-        cursor:pointer;
-        font-weight:bold;
-        margin:5px;
-    }}
-
-    .btn1 {{background:#28a745; color:white;}}
-    .btn2 {{background:#dc3545; color:white;}}
-    .btn3 {{background:#007bff; color:white;}}
-
-    table {{
-        width:100%;
-        border-collapse:collapse;
-        background:white;
-        border-radius:10px;
-        overflow:hidden;
-    }}
-
-    th {{
-        background:#222;
-        color:white;
-        padding:12px;
-    }}
-
-    td {{
-        padding:10px;
-        text-align:center;
-    }}
-
-    tr:nth-child(even) {{
-        background:#f2f2f2;
-    }}
-
-    .entrada {{
-        color:green;
-        font-weight:bold;
-    }}
-
-    .salida {{
-        color:red;
-        font-weight:bold;
-    }}
-
-    input, select {{
-        padding:8px;
-        border-radius:8px;
-        border:1px solid #ccc;
-    }}
-    </style>
+    <meta http-equiv="refresh" content="2">
     </head>
-
     <body>
 
-    <div class="panel">
     <h1>🅿️ Estacionamiento Falcon</h1>
 
-    <h2>Estado:
-    <span class="{'abierto' if estado_estacionamiento else 'cerrado'}">
-    {estado}
-    </span>
-    </h2>
+    <h2>Estado: {estado}</h2>
+    <h2>Autos: {autos_actuales}/{MAX_AUTOS}</h2>
+    <h2>{lleno}</h2>
 
-    <h2>Autos actuales: {autos_actuales}/{MAX_AUTOS}</h2>
+    <a href="/abrir">ABRIR</a><br>
+    <a href="/cerrar">CERRAR</a><br>
+    <a href="/reiniciar">REINICIAR</a><br>
 
-    <h2>
-    <span class="{'lleno' if autos_actuales >= MAX_AUTOS else 'disponible'}">
-    {lleno}
-    </span>
-    </h2>
+    <h2>Historial</h2>
 
-    <a href="/abrir"><button class="btn1">ABRIR</button></a>
-    <a href="/cerrar"><button class="btn2">CERRAR</button></a>
-    <a href="/reiniciar"><button class="btn3">REINICIAR</button></a>
-    <a href="/"><button class="btn3">ACTUALIZAR</button></a>
-    </div>
-
-    <div class="panel">
-
-    <h2>🔍 Buscador</h2>
-
-    <form method="GET">
-    <select name="filtro">
-        <option value="evento">Evento</option>
-        <option value="fecha_hora">Fecha completa</option>
-        <option value="anio">Año</option>
-        <option value="mes">Mes</option>
-        <option value="dia">Día</option>
-        <option value="hora">Hora</option>
-        <option value="total_autos">Autos</option>
-    </select>
-
-    <input type="text" name="valor" placeholder="Buscar">
-    <button class="btn3" type="submit">Buscar</button>
-    </form>
-
-    </div>
-
-    <div class="panel">
-    <h2>📋 Historial</h2>
-
-    <table>
+    <table border="1">
     <tr>
         <th>ID</th>
         <th>Entrada</th>
         <th>Salida</th>
         <th>Total</th>
-        <th>Fecha Hora</th>
+        <th>Fecha</th>
         <th>Evento</th>
     </tr>
     """
 
     for fila in datos:
-        evento = "<span class='entrada'>🟢 Entrada</span>" if fila[5] == "Entrada" else "<span class='salida'>🔴 Salida</span>"
-
         html += f"""
         <tr>
             <td>{fila[0]}</td>
@@ -327,21 +179,16 @@ def inicio():
             <td>{fila[2]}</td>
             <td>{fila[3]}</td>
             <td>{fila[4]}</td>
-            <td>{evento}</td>
+            <td>{fila[5]}</td>
         </tr>
         """
 
-    html += """
-    </table>
-    </div>
-
-    </body>
-    </html>
-    """
+    html += "</table></body></html>"
 
     return html
 
-
 # ==================================
-# IMPORTANTE: NO app.run() (Render usa Gunicorn)
+# INICIO
 # ==================================
+if __name__ == "__main__":
+    app.run()
